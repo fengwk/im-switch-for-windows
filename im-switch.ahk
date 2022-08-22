@@ -18,13 +18,14 @@ General_ZhImgs := "ZhImgs"
 ; 快速搜索区间文件路径
 ImSwitchIniFilename := A_Temp IniRead(ConfigFilename, General, General_TempFilename, "\im-switch.ini")
 ; Section SearchRegionCache，搜索区间缓存，为了加速搜索
-SearchRegionCache := "SearchRegionCache"
-SearchRegionCache_EnIdx := "EnIdx"
-SearchRegionCache_EnX := "EnX"
-SearchRegionCache_EnY := "EnY"
-SearchRegionCache_ZhIdx := "ZhIdx"
-SearchRegionCache_ZhX := "ZhX"
-SearchRegionCache_ZhY := "ZhY"
+SearchRegionCacheEn := "SearchRegionCacheEn"
+SearchRegionCacheZh := "SearchRegionCacheZh"
+SearchRegionCacheEn_Idx := "Idx"
+SearchRegionCacheEn_X := "X"
+SearchRegionCacheEn_Y := "Y"
+SearchRegionCacheZh_Idx := "Idx"
+SearchRegionCacheZh_X := "X"
+SearchRegionCacheZh_Y := "ZhY"
 
 ; 输入法切换按键组合
 SwitchKeys := IniRead(ConfigFilename, General, General_SwitchKeys, "^{Space}")
@@ -58,7 +59,12 @@ HasImg(SearchRegion, Img, &FoundX, &FoundY) {
 ; 检查屏幕上是否包含Imgs数组中的图片
 HasImgs(SearchRegion, Imgs, CacheIdx, &FoundX, &FoundY, &FoundIdx) {
     if CacheIdx > 0 and CacheIdx < Imgs.Length {
-        return HasImg(SearchRegion, Imgs[CacheIdx], &FoundX, &FoundY)
+        if HasImg(SearchRegion, Imgs[CacheIdx], &FoundX, &FoundY) {
+            FoundIdx := CacheIdx
+            return 1
+        } else {
+            return 0
+        }
     }
 
     Idx := 1
@@ -86,42 +92,42 @@ IsEn(UseCache) {
     CacheEnIdx := 0
     ; 如果允许使用缓存，将尝试从缓存中读取一个上次搜索到的位置以加速搜索
     if UseCache {
-        EnRegion[1] := IniRead(ImSwitchIniFilename, SearchRegionCache, SearchRegionCache_EnX, 0)
-        EnRegion[2] := IniRead(ImSwitchIniFilename, SearchRegionCache, SearchRegionCache_EnY, 0)
-        CacheEnIdx := IniRead(ImSwitchIniFilename, SearchRegionCache, SearchRegionCache_EnIdx, 0)
+        EnRegion[1] := IniRead(ImSwitchIniFilename, SearchRegionCacheEn, SearchRegionCacheEn_X, 0)
+        EnRegion[2] := IniRead(ImSwitchIniFilename, SearchRegionCacheEn, SearchRegionCacheEn_Y, 0)
+        CacheEnIdx := IniRead(ImSwitchIniFilename, SearchRegionCacheEn, SearchRegionCacheEn_Idx, 0)
     }
 
     if HasImgs(EnRegion, EnImgs, CacheEnIdx, &FoundX, &FoundY, &FoundIdx) {
         ; 如果搜索到了en，记录到缓存，然后直接返回1
         if FoundX != EnRegion[1] {
-            IniWrite(FoundX, ImSwitchIniFilename, SearchRegionCache, SearchRegionCache_EnX)
+            IniWrite(FoundX, ImSwitchIniFilename, SearchRegionCacheEn, SearchRegionCacheEn_X)
         }
         if FoundY != EnRegion[2] {
-            IniWrite(FoundY, ImSwitchIniFilename, SearchRegionCache, SearchRegionCache_EnY)
+            IniWrite(FoundY, ImSwitchIniFilename, SearchRegionCacheEn, SearchRegionCacheEn_Y)
         }
         if FoundIdx != CacheEnIdx {
-            IniWrite(FoundIdx, ImSwitchIniFilename, SearchRegionCache, SearchRegionCache_EnIdx)
+            IniWrite(FoundIdx, ImSwitchIniFilename, SearchRegionCacheEn, SearchRegionCacheEn_Idx)
         }
         return 1
     } else if UseCache and EnRegion[1] > 0 {
         ; UseCache and EnRegion[1] > 0 说明允许使用缓存，并且真的使用了缓存
         ; 如果使用了缓存，并且没有搜索到，那么检查一下是否是zh，如果不是zh还需要全局搜索一次，防止因为缓存问题导致的没有搜索到的情况
         ZhRegion := [
-            IniRead(ImSwitchIniFilename, SearchRegionCache, SearchRegionCache_ZhX, 0), 
-            IniRead(ImSwitchIniFilename, SearchRegionCache, SearchRegionCache_ZhY, 0), 
+            IniRead(ImSwitchIniFilename, SearchRegionCacheZh, SearchRegionCacheZh_X, 0), 
+            IniRead(ImSwitchIniFilename, SearchRegionCacheZh, SearchRegionCacheZh_Y, 0), 
             A_ScreenWidth, 
             A_ScreenHeight]
-        CacheZhIdx := IniRead(ImSwitchIniFilename, SearchRegionCache, SearchRegionCache_ZhIdx, 0)
+        CacheZhIdx := IniRead(ImSwitchIniFilename, SearchRegionCacheZh, SearchRegionCacheZh_Idx, 0)
         if HasImgs(ZhRegion, ZhImgs, CacheZhIdx, &FoundX, &FoundY, &FoundIdx) {
             ; 如果是zh说明不是n，记录一下zh缓存，返回0即可
             if FoundX != ZhRegion[1] {
-                IniWrite(FoundX, ImSwitchIniFilename, SearchRegionCache, SearchRegionCache_ZhX)
+                IniWrite(FoundX, ImSwitchIniFilename, SearchRegionCacheZh, SearchRegionCacheZh_X)
             }
             if FoundY != ZhRegion[2] {
-                IniWrite(FoundY, ImSwitchIniFilename, SearchRegionCache, SearchRegionCache_ZhY)
+                IniWrite(FoundY, ImSwitchIniFilename, SearchRegionCacheZh, SearchRegionCacheZh_Y)
             }
             if FoundIdx != CacheZhIdx {
-                IniWrite(FoundIdx, ImSwitchIniFilename, SearchRegionCache, SearchRegionCache_ZhIdx)
+                IniWrite(FoundIdx, ImSwitchIniFilename, SearchRegionCacheZh, SearchRegionCacheZh_Idx)
             }
             return 0
         } else {
@@ -129,13 +135,11 @@ IsEn(UseCache) {
             ; 无缓存搜索一次en，如果是en说明en缓存坏了，如果不是en说明zh缓存坏了
             if IsEn(false) {
                 ; en缓存坏了，清理掉该缓存
-                IniDelete(ImSwitchIniFilename, SearchRegionCache, SearchRegionCache_EnX)
-                IniDelete(ImSwitchIniFilename, SearchRegionCache, SearchRegionCache_EnY)
+                IniDelete(ImSwitchIniFilename, SearchRegionCacheEn)
                 return 1
             } else {
                 ; zh缓存坏了，清理掉该缓存
-                IniDelete(ImSwitchIniFilename, SearchRegionCache, SearchRegionCache_ZhX)
-                IniDelete(ImSwitchIniFilename, SearchRegionCache, SearchRegionCache_ZhY)
+                IniDelete(ImSwitchIniFilename, SearchRegionCacheZh)
                 return 0
             }
         }
