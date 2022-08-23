@@ -25,7 +25,7 @@ SearchRegionCacheEn_X := "X"
 SearchRegionCacheEn_Y := "Y"
 SearchRegionCacheZh_Idx := "Idx"
 SearchRegionCacheZh_X := "X"
-SearchRegionCacheZh_Y := "ZhY"
+SearchRegionCacheZh_Y := "Y"
 
 ; 输入法切换按键组合
 SwitchKeys := IniRead(ConfigFilename, General, General_SwitchKeys, "^{Space}")
